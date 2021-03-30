@@ -87,6 +87,4 @@ auto document = csv::read_from_file
 	csv::experimental::single_type_prototype<float>
 	>
 	("single_type.csv");
-
-return 0;
 ```
