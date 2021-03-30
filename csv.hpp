@@ -143,7 +143,7 @@ namespace csv
 		std::stringstream& buffer
 	) {
 		CUSTOM_PROTOTYPE_ASSERT(DATA_TYPE, CUSTOM_PROTOTYPE)
-		CUSTOM_PROTOTYPE proto;
+			CUSTOM_PROTOTYPE proto;
 		auto doc = std::make_unique<Document<DATA_TYPE>>();
 
 		read_header_from_buffer(buffer, doc->header, proto.get_delimiter());
@@ -168,7 +168,7 @@ namespace csv
 		const std::vector<std::string>& header = {}
 	) {
 		CUSTOM_PROTOTYPE_ASSERT(DATA_TYPE, CUSTOM_PROTOTYPE)
-		CUSTOM_PROTOTYPE proto;
+			CUSTOM_PROTOTYPE proto;
 		std::stringstream buffer;
 
 		// write header to buffer
@@ -261,7 +261,7 @@ namespace csv
 	)
 	{
 		CUSTOM_PROTOTYPE_ASSERT(DATA_TYPE, CUSTOM_PROTOTYPE)
-		CUSTOM_PROTOTYPE proto;
+			CUSTOM_PROTOTYPE proto;
 
 		auto document = std::make_unique<Document<DATA_TYPE>>();
 		read_header_from_buffer(buffer, document->header, proto.get_delimiter());
@@ -316,23 +316,21 @@ namespace csv
 	}
 #endif
 
-	enum class Method {
-		DEFAULT,
-#ifndef NO_ASYNC
-		ASYNC,
-#endif
-	};
+
 
 	// read from file with a default asynchronous behavior
+#ifndef NO_ASYNC
+
+	enum class Method {
+		DEFAULT,
+		ASYNC,
+	};
+
 	template <typename DATA_TYPE, typename CUSTOM_PROTOTYPE>
 	std::unique_ptr<Document<DATA_TYPE>> read_from_file
 	(
 		const std::string& path,
-#ifndef NO_ASYNC
 		Method method = Method::ASYNC
-#else
-		Method method = Method::DEFAULT
-#endif
 	) {
 		CUSTOM_PROTOTYPE_ASSERT(DATA_TYPE, CUSTOM_PROTOTYPE)
 		std::stringstream buffer = get_buffer_from_file(path);
@@ -341,14 +339,27 @@ namespace csv
 		{
 		case csv::Method::DEFAULT:
 			return read_from_buffer<DATA_TYPE, CUSTOM_PROTOTYPE>(buffer);
-#ifndef NO_ASYNC
 		case csv::Method::ASYNC:
 			return read_async_from_buffer<DATA_TYPE, CUSTOM_PROTOTYPE>(buffer);
-#endif
 		default:
 			throw error::not_implemented("Reading method not implemented.");
 		}
 	}
+#else
+	template <typename DATA_TYPE, typename CUSTOM_PROTOTYPE>
+	std::unique_ptr<Document<DATA_TYPE>> read_from_file
+	(
+		const std::string& path
+	) {
+		CUSTOM_PROTOTYPE_ASSERT(DATA_TYPE, CUSTOM_PROTOTYPE)
+			std::stringstream buffer = get_buffer_from_file(path);
+		return read_from_buffer<DATA_TYPE, CUSTOM_PROTOTYPE>(buffer);
+	}
+#endif
+
+
+
+
 
 
 	// ------------------------
@@ -417,7 +428,7 @@ namespace csv
 			const std::vector<std::string>& header = {}
 		) {
 			CUSTOM_PROTOTYPE_ASSERT(DATA_TYPE, CUSTOM_PROTOTYPE)
-			CUSTOM_PROTOTYPE proto;
+				CUSTOM_PROTOTYPE proto;
 			const unsigned int rows_num = rows.size();
 
 			if (rows_num < thread_num) {
