@@ -60,7 +60,7 @@ namespace csv
 	// [ SECTION ] Helper functions
 	// -----------------------------
 
-	std::stringstream get_buffer_from_file(const std::string& path)
+	static std::stringstream get_buffer_from_file(const std::string& path)
 	{
 		std::stringstream buffer;
 		std::ifstream file(path);
@@ -73,7 +73,7 @@ namespace csv
 		return buffer;
 	}
 
-	void write_buffer_into_file(const std::string& path, std::stringstream& buffer)
+	static void write_buffer_into_file(const std::string& path, std::stringstream& buffer)
 	{
 		std::ofstream file(path);
 		if (file.is_open()) {
@@ -84,7 +84,7 @@ namespace csv
 		}
 	}
 
-	void read_header_from_buffer(std::stringstream& buffer, std::vector<std::string>& header, const char delimiter)
+	static void read_header_from_buffer(std::stringstream& buffer, std::vector<std::string>& header, const char delimiter)
 	{
 		// get line
 		std::string header_line;
@@ -138,7 +138,7 @@ namespace csv
 
 	// linearly read and deserialize data from csv file, slower than the read_async_from_folder method
 	template <typename DATA_TYPE, typename CUSTOM_PROTOTYPE>
-	std::unique_ptr<Document<DATA_TYPE>> read_from_buffer
+	static std::unique_ptr<Document<DATA_TYPE>> read_from_buffer
 	(
 		std::stringstream& buffer
 	) {
@@ -161,7 +161,7 @@ namespace csv
 
 	// linearly serialize data to file using a prototype. The header can be omitted to only save rows to file.
 	template <typename DATA_TYPE, typename CUSTOM_PROTOTYPE>
-	void write
+	static void write
 	(
 		const std::string filename,
 		const std::vector<DATA_TYPE>& rows,
@@ -255,7 +255,7 @@ namespace csv
 
 	// read asynchronously from file using a prototype deserialize function and async_reader objects
 	template <typename DATA_TYPE, typename CUSTOM_PROTOTYPE>
-	std::unique_ptr<Document<DATA_TYPE>> read_async_from_buffer
+	static std::unique_ptr<Document<DATA_TYPE>> read_async_from_buffer
 	(
 		std::stringstream& buffer
 	)
@@ -327,7 +327,7 @@ namespace csv
 	};
 
 	template <typename DATA_TYPE, typename CUSTOM_PROTOTYPE>
-	std::unique_ptr<Document<DATA_TYPE>> read_from_file
+	static std::unique_ptr<Document<DATA_TYPE>> read_from_file
 	(
 		const std::string& path,
 		Method method = Method::ASYNC
@@ -347,7 +347,7 @@ namespace csv
 	}
 #else
 	template <typename DATA_TYPE, typename CUSTOM_PROTOTYPE>
-	std::unique_ptr<Document<DATA_TYPE>> read_from_file
+	static std::unique_ptr<Document<DATA_TYPE>> read_from_file
 	(
 		const std::string& path
 	) {
@@ -422,7 +422,7 @@ namespace csv
 #ifndef NO_ASYNC
 		// not dramatically faster than write except if the prototype deserialize method is time consuming
 		template<typename DATA_TYPE, typename CUSTOM_PROTOTYPE>
-		void write_async(
+		static void write_async(
 			const std::string& filename,
 			const std::vector<DATA_TYPE>& rows,
 			const std::vector<std::string>& header = {}
