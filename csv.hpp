@@ -191,6 +191,25 @@ namespace csv
 
 #ifndef NO_ASYNC
 
+	static std::exception_ptr thread_exception = nullptr;
+
+	// check for exception during the parsing
+	static void CheckForThreadException() {
+		if (thread_exception) {
+			try {
+				std::rethrow_exception(thread_exception);
+			}
+			catch (const std::exception& ex)
+			{
+				std::stringstream msg;
+				msg << "An error occurred while parsing the csv file: ";
+				msg << ex.what();
+				throw std::exception(msg.str().c_str());
+			}
+		}
+	}
+
+
 	// asynchronous readers used to deserialize chunk of data
 	template <typename DATA_TYPE, typename CUSTOM_PROTOTYPE>
 	class async_reader
@@ -226,18 +245,25 @@ namespace csv
 				std::unique_lock<std::mutex> ul(m_lock);
 				m_cv.wait(ul, [&] {return !m_queue.empty() || !m_running; });
 
-				while (!m_queue.empty())
+				try
 				{
-					auto row = m_queue.front().first;
-					std::string line;
-					while (std::getline(m_queue.front().second, line))
+					while (!m_queue.empty())
 					{
-						std::stringstream s(line);
-						row->push_back(m_prototype.deserialize(s));
+						auto row = m_queue.front().first;
+						std::string line;
+						while (std::getline(m_queue.front().second, line))
+						{
+							std::stringstream s(line);
+							row->push_back(m_prototype.deserialize(s));
+						}
+						m_queue.pop();
 					}
-					m_queue.pop();
+					if (!m_running) break;
 				}
-				if (!m_running) break;
+				catch (...)
+				{
+					thread_exception = std::current_exception();
+				}
 			}
 		}
 
@@ -262,6 +288,7 @@ namespace csv
 	{
 		CUSTOM_PROTOTYPE_ASSERT(DATA_TYPE, CUSTOM_PROTOTYPE)
 			CUSTOM_PROTOTYPE proto;
+		thread_exception = nullptr;
 
 		auto document = std::make_unique<Document<DATA_TYPE>>();
 		read_header_from_buffer(buffer, document->header, proto.get_delimiter());
@@ -308,6 +335,9 @@ namespace csv
 			delete[] subBuffer;
 		} // calls reader's destructor that wait for their worker to finish processing and to join.
 
+		CheckForThreadException();
+
+
 		// transferring processed data to the content
 		for (const auto& rows : storages) {
 			document->rows.insert(document->rows.end(), rows->begin(), rows->end());
@@ -333,7 +363,7 @@ namespace csv
 		Method method = Method::ASYNC
 	) {
 		CUSTOM_PROTOTYPE_ASSERT(DATA_TYPE, CUSTOM_PROTOTYPE)
-		std::stringstream buffer = get_buffer_from_file(path);
+			std::stringstream buffer = get_buffer_from_file(path);
 
 		switch (method)
 		{
@@ -429,6 +459,8 @@ namespace csv
 		) {
 			CUSTOM_PROTOTYPE_ASSERT(DATA_TYPE, CUSTOM_PROTOTYPE)
 				CUSTOM_PROTOTYPE proto;
+			thread_exception = nullptr;
+
 			const unsigned int rows_num = rows.size();
 
 			if (rows_num < thread_num) {
@@ -457,8 +489,14 @@ namespace csv
 						unsigned int end = i < thread_num - 1 ? cur + chunk_size : cur + chunk_size + remaining_size;
 
 						while (cur <= end) {
-							proto.serialize(*buffer, rows[cur]);
-							cur++;
+							try {
+								proto.serialize(*buffer, rows[cur]);
+								cur++;
+							}
+							catch (...)
+							{
+								thread_exception = std::current_exception();
+							}
 						}
 					}
 				));
@@ -468,6 +506,7 @@ namespace csv
 				thread.join();
 			}
 
+			CheckForThreadException();
 
 			std::ofstream file(filename);
 
